@@ -1,0 +1,97 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: llama4-fp8
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llama
+  template:
+    metadata:
+      name: llama
+      labels:
+        app: llama
+    spec:
+      containers:
+      - name: llama-factory
+        image: kanic1111/llama-factory:05-23
+        command: ["bash", "-c"]
+        args:
+          - |
+            llamafactory-cli api /workspace/config/llama4.yaml \
+              infer_backend=vllm \
+              vllm_enforce_eager=true \
+              vllm_gpu_util=0.9
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+        - mountPath: /dev/shm
+          name: dev-shm
+        - name: llama4-config
+          mountPath: /workspace/config/llama4.yaml
+          subPath: llama4.yaml
+        env:
+        - name: NEMO_MODELS_CACHE
+          value: "/workspace/.cache"
+        - name: HF_HOME
+          value: "/workspace/hf/cache"
+        - name: HUGGINGFACE_HUB_CACHE
+          value: "/workspace/hf/hub_cache"
+        - name: API_MODEL_NAME
+          value: "/RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic"
+        - name: API_PORT
+          value: "8000"
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+      volumes:
+      - name: workspace
+        persistentVolumeClaim:
+          claimName: llama-workspace
+      - emptyDir:
+          medium: "Memory"
+          sizeLimit: "64Gi"
+        name: dev-shm
+      - name: llama4-config
+        configMap:
+          name: llama4-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llama4-nodeport
+spec:
+  type: NodePort
+  selector:
+    app: llama
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8000         # Target port (your app's internal port)
+      targetPort: 8000   # Pod containerPort
+      nodePort: 30002
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llama4-config
+data:
+  llama4.yaml: |
+    model_name_or_path: RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic
+    template: llama4
+    infer_backend: vllm
+    trust_remote_code: true
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: llama-workspace
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Ti
+  storageClassName: nfs-csi
