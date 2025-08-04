@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "llama4-helm.fullname" . }}
+  labels:
+    {{- include "llama4-helm.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+      protocol: TCP
+      nodePort: {{ .Values.service.nodeport }}
+      name: openai
+  selector:
+    {{- include "llama4-helm.selectorLabels" . | nindent 4 }}

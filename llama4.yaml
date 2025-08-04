@@ -22,7 +22,8 @@ spec:
             llamafactory-cli api /workspace/config/llama4.yaml \
               infer_backend=vllm \
               vllm_enforce_eager=true \
-              vllm_gpu_util=0.9
+              vllm_gpu_util=0.9 \
+              vllm_maxlen=32768 # vllm max_model_len adjust by yourself
         volumeMounts:
         - name: workspace
           mountPath: /workspace
@@ -42,6 +43,8 @@ spec:
           value: "/RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic"
         - name: API_PORT
           value: "8000"
+        - name: VLLM_ALLOW_LONG_MAX_MODEL_LEN
+          value: "1"
         resources:
           limits:
             nvidia.com/gpu: 1
