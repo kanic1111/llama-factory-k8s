@@ -36,7 +36,7 @@ spec:
         - name: {{ .Chart.Name }}
           command: ["bash", "-c"]
           args:
-            {{ include "llamafactory.getArgs" .Values.llama_factory | nindent 8 }}
+            {{ .Values.llama_factory.bashCommand | indent 12 }}
           {{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
@@ -63,10 +63,16 @@ spec:
           volumeMounts:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- with .Values.volumes }}
+    {{- $ctx := . }}  # root context for tpl
+    {{- if .Values.volumes }}
       volumes:
-        {{- toYaml . | nindent 8 }}
+      {{- range .Values.volumes }}
+        {{- $volumeYaml := tpl (toYaml .) $ctx }}
+        {{- if or (not (regexMatch ".*persistentVolumeClaim.*" $volumeYaml)) (and $.Values.pvc.enabled (regexMatch ".*persistentVolumeClaim.*" $volumeYaml)) }}
+          {{ $volumeYaml | nindent 8 }}
+        {{- end }}
       {{- end }}
+    {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

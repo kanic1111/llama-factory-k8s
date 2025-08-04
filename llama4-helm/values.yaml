@@ -6,12 +6,12 @@
 replicaCount: 1
 
 llama_factory:
-  extraArgs:
-  - llamafactory-cli api /workspace/config/llama4.yaml 
-  - infer_backend=vllm 
-  - vllm_enforce_eager=true 
-  - vllm_gpu_util=0.9 
-  - vllm_maxlen=32768
+  bashCommand: |
+    llamafactory-cli api /workspace/config/llama4.yaml \
+      infer_backend=vllm \
+      vllm_enforce_eager=true \
+      vllm_gpu_util=0.9 \
+      vllm_maxlen=32768 # vllm max_model_len adjust by yourself
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
   repository: kanic1111/llama-factory
@@ -130,7 +130,7 @@ volumes:
     name: helm-llama4-config
 - name: workspace
   persistentVolumeClaim:
-    claimName: llama-workspace
+    claimName: "{{ .Values.pvc.name }}-pvc"
 - name: dev-shm
   emptyDir:
     medium: "Memory"
