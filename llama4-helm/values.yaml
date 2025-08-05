@@ -6,13 +6,44 @@
 replicaCount: 1
 
 llama_factory:
-  bashCommand: |
-    llamafactory-cli api /workspace/config/llama4.yaml \
-      infer_backend=vllm \
-      vllm_enforce_eager=true \
-      vllm_gpu_util=0.9 \
-      vllm_maxlen=32768 # vllm max_model_len adjust by yourself
-# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+  # vllm max_model_len adjust by yourself
+  # bashCommand: 
+  #   |
+  #   llamafactory-cli api {{ .Values.llama_factory.templatepath }} 
+  #     infer_backend=vllm \
+  #     vllm_enforce_eager=true \
+  #     vllm_gpu_util=0.9 \
+  #     vllm_maxlen=32768 
+  hf_cache: true 
+  #env for both llama-factory and hugging face
+  env:
+    huggingface-cache: true
+    hf-home: "/workspace/hf/cache"
+  #configmap to Llama-factory
+  templatepath: "/workspace/config/llama4.yaml"
+
+  # for CLI arg please check llamafactory github: https://github.com/hiyouga/LLaMA-Factory/tree/main 
+  cli_args:
+    infer_backend: vllm #llama-factory supports huggingface sglangs vllm
+    mode: api # check llamafactory github to see all avaliable options
+    vllm:
+      extraArgs:
+        vllm_enforce_eager: true
+        vllm_gpu_util: 0.9
+        vllm_maxlen: 32768
+  configmap:
+    name: llama4-config
+    model_name_or_path: RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic
+    template: llama4
+    infer_backend: vllm
+    trust_remote_code: true
+  
+  # env example:
+  # env:
+  #   huggingface-cache: true
+  #   hf-home: "/workspace/huggingface/cache"
+  #   
+  # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
   repository: kanic1111/llama-factory
   # This sets the pull policy for images.
@@ -26,12 +57,7 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-#configmap to Llama-factory
-configmap:
-  model_name_or_path: RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic
-  template: llama4
-  infer_backend: vllm
-  trust_remote_code: true
+
 # This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
 serviceAccount:
   # Specifies whether a service account should be created
@@ -102,17 +128,19 @@ resources:
   #   memory: 128Mi
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
-# livenessProbe:
-#   httpGet:
-#     path: /
-#     port: http
-# readinessProbe:
-#   httpGet:
-#     path: /
-#     port: http
+healthcheck:
+  enabled: false
+  livenessProbe:
+    httpGet:
+      path: /v1/models
+      port: 8000
+  readinessProbe:
+    httpGet:
+      path: /v1/models
+      port: 8000
 
 # This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
-# autoscaling 
+# autoscaling doesn't work on inference
 autoscaling:
   enabled: false
   minReplicas: 1
@@ -120,34 +148,45 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   targetMemoryUtilizationPercentage: 80
 
-env:
-  huggingface-cache: true
 
 # Additional volumes on the output Deployment definition.
-volumes: 
-- name: helm-llama4-config
-  configMap:
-    name: helm-llama4-config
-- name: workspace
-  persistentVolumeClaim:
-    claimName: "{{ .Values.pvc.name }}-pvc"
-- name: dev-shm
-  emptyDir:
-    medium: "Memory"
-    sizeLimit: "64Gi"
+storage:
+  shmSize: 64Gi
+  volumes: 
+  - name: "{{ .Values.llama_factory.configmap.name }}"
+    configMap:
+      name: "{{ .Values.llama_factory.configmap.name }}"
+  - name: "{{ .Values.storage.pvc.name }}"
+    persistentVolumeClaim:
+      claimName: "{{ .Values.storage.pvc.name }}-pvc"
+  - name: dev-shm
+    emptyDir:
+      medium: "Memory"
+      sizeLimit: "{{ .Values.storage.shmSize }}"
 
-pvc:
-  enabled: true
-  name: workspace
-  storageClassName: "nfs-csi"
-  accessMode: ReadWriteMany
-  size: 1Ti # atleast 500GB needed to download model
+  # volume example
+  # - name: workspace
+  # persistentVolumeClaim:
+  #   claimName: "{{ .Values.storage.pvc.name }}-pvc"
+  local-storage:
+    enabled: false #does not recommand to use local mountpoint
+    path: /mnt/model_save # any location that have 500Gb or above
+
+  #pvc example
+
+  pvc:
+    enabled: true
+    name: workspace
+    storageClassName: "nfs-csi"
+    accessMode: ReadWriteMany
+    size: 1Ti # atleast 500GB needed to download model
+
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts: 
-- name: helm-llama4-config
-  mountPath: /workspace/config/llama4.yaml
+- name: "{{ .Values.llama_factory.configmap.name }}"
+  mountPath: "{{ .Values.llama_factory.templatepath }}"
   subPath: llama4.yaml
-- name: workspace
+- name: "{{ .Values.storage.pvc.name }}"
   mountPath: /workspace
 - name: dev-shm
   mountPath: /dev/shm

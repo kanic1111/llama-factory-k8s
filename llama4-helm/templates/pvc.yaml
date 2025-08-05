@@ -1,13 +1,13 @@
-{{- if .Values.pvc.enabled -}}
+{{- if .Values.storage.pvc.enabled -}}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .Values.pvc.name }}-pvc
+  name: {{ .Values.storage.pvc.name }}-pvc
 spec:
   accessModes:
-    - {{ .Values.pvc.accessMode }}
+    - {{ .Values.storage.pvc.accessMode }}
   resources:
     requests:
-      storage: {{ .Values.pvc.size }}
-  storageClassName: {{ .Values.pvc.storageClassName | quote }}
+      storage: {{ .Values.storage.pvc.size }}
+  storageClassName: {{ .Values.storage.pvc.storageClassName | quote }}
 {{- end }}

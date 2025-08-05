@@ -84,3 +84,29 @@ Create the name of the service account to use
   - {{ $a | quote }}
   {{- end }}
 {{- end }}
+
+{{- define "llama_factory.renderBashCommand" -}}
+    {{- $base := printf "llamafactory-cli %s %s" .Values.llama_factory.cli_args.mode .Values.llama_factory.templatepath }}
+    {{- $args := list (printf "%s " $base) }}
+    {{- $args = append $args (printf "infer_backend=%s" .Values.llama_factory.cli_args.infer_backend) }}
+    {{- if eq .Values.llama_factory.cli_args.infer_backend "vllm" }}
+        {{- if .Values.llama_factory.cli_args.vllm }}
+            {{- $extra := .Values.llama_factory.cli_args.vllm.extraArgs }}
+            {{- $keys := keys $extra | sortAlpha }}
+            {{- range $i, $k := $keys }}
+                {{- $val := index $extra $k }}
+                {{- $item := printf "%s=%v" $k $val }}
+                {{- $args = append $args $item }}
+            {{- end }}
+        {{- end }}
+    {{- end }}
+
+    {{- $lastIndex := sub (len $args) 1 }}
+    {{- range $i, $line := $args }}
+        {{- if lt $i $lastIndex }}
+            {{ $line }} \
+        {{- else }}
+            {{ $line }}
+        {{- end }}
+    {{- end }}
+{{- end }}
