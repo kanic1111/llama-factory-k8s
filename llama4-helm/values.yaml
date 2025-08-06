@@ -14,12 +14,18 @@ llama_factory:
   #     vllm_enforce_eager=true \
   #     vllm_gpu_util=0.9 \
   #     vllm_maxlen=32768 
+  model: RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic
   hf_cache: true 
-  #env for both llama-factory and hugging face
+  # env for both llama-factory and hugging face
+  # env are all optional but the cache store should be point to the pvc mount path
   env:
     huggingface-cache: true
     hf-home: "/workspace/hf/cache"
-  #configmap to Llama-factory
+    huggingface-hub-cache: "/workspace/hf/hub_cache"
+    api-port: "8000"
+    vllm-allow-long-max-model-len: "0"
+ 
+  #config to Llama-factory
   templatepath: "/workspace/config/llama4.yaml"
 
   # for CLI arg please check llamafactory github: https://github.com/hiyouga/LLaMA-Factory/tree/main 
@@ -31,12 +37,14 @@ llama_factory:
         vllm_enforce_eager: true
         vllm_gpu_util: 0.9
         vllm_maxlen: 32768
-  configmap:
+
+  config:
     name: llama4-config
-    model_name_or_path: RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic
-    template: llama4
-    infer_backend: vllm
-    trust_remote_code: true
+    cli_config:
+      model_name_or_path: RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic
+      template: llama4
+      infer_backend: vllm
+      trust_remote_code: true
   
   # env example:
   # env:
@@ -153,9 +161,9 @@ autoscaling:
 storage:
   shmSize: 64Gi
   volumes: 
-  - name: "{{ .Values.llama_factory.configmap.name }}"
+  - name: "{{ .Values.llama_factory.config.name }}"
     configMap:
-      name: "{{ .Values.llama_factory.configmap.name }}"
+      name: "{{ .Values.llama_factory.config.name }}"
   - name: "{{ .Values.storage.pvc.name }}"
     persistentVolumeClaim:
       claimName: "{{ .Values.storage.pvc.name }}-pvc"
@@ -176,6 +184,7 @@ storage:
 
   pvc:
     enabled: true
+    use_existed: false
     name: workspace
     storageClassName: "nfs-csi"
     accessMode: ReadWriteMany
@@ -183,7 +192,7 @@ storage:
 
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts: 
-- name: "{{ .Values.llama_factory.configmap.name }}"
+- name: "{{ .Values.llama_factory.config.name }}"
   mountPath: "{{ .Values.llama_factory.templatepath }}"
   subPath: llama4.yaml
 - name: "{{ .Values.storage.pvc.name }}"

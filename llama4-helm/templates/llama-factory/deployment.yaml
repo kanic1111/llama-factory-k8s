@@ -65,6 +65,8 @@ spec:
           - name: {{ $key | upper | replace "-" "_" }}
             value: "{{ $val }}"
         {{- end }}
+          - name: API_MODEL_NAME
+            value: {{ .Values.llama_factory.model | quote }}
       {{- end }}
         {{- with .Values.resources }}
         resources:

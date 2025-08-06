@@ -1,4 +1,4 @@
-{{- if .Values.storage.pvc.enabled -}}
+{{- if and .Values.storage.pvc.enabled (not .Values.storage.pvc.use_existed ) -}}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
