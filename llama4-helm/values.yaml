@@ -8,18 +8,16 @@ replicaCount: 1
 # add vllm for some model that can't be deploy with llama-factory
 vllm:
   enabled: true # this gets overwrite if llama_factory are enabled  
-  model: "test"
+  model: "RedHatAI/whisper-large-v3-FP8-Dynamic"
   hf_token: ""
   image: vllm/vllm-openai:gptoss
-  args:
-    vllm:
-      extraArgs:
-        --enforce-eager: true
-        --gpu-memory-utilization: 0.9
-        --max-model-len: 32768
+  extraArgs:
+    --enforce-eager: true
+    --gpu-memory-utilization: 0.7
+    --max-model-len: 448  
 
 llama_factory:
-  enabled: true
+  enabled: false
   # vllm max_model_len adjust by yourself
   # bashCommand: 
   #   |

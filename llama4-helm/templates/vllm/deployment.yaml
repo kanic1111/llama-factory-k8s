@@ -37,9 +37,10 @@ spec:
       {{- end }}
       containers:
       - name: {{ .Chart.Name }}
-        command: ["vllm", "serve"]
+        command: ["bash", "-c"]
         args:
-          {{ include "vllm.vllmServeCommand" . | nindent 10 | default .Values.llama_factory.model | trim }}
+          - |
+            {{ include "vllm.vllmServeCommand"  . | nindent 12 | default .Values.llama_factory.model | trim }}
         {{- with .Values.securityContext }}
         securityContext:
           {{- toYaml . | nindent 12 }}

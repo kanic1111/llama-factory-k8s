@@ -85,16 +85,24 @@ Create the name of the service account to use
   {{- end }}
 {{- end }}
 
-{{- define "vllm.vllmServeCommand" }}{{ printf "- \"%s\"" .Values.vllm.model }}
-{{- $args := .Values.llama_factory.cli_args.vllm.extraArgs }}
+{{- define "vllm.vllmServeCommand" -}}
+vllm serve {{ .Values.vllm.model }} \
+{{- $args := .Values.vllm.extraArgs }}
 {{- if $args }}
-  {{- range $key, $val := $args }}
-    {{- if eq (kindOf $val) "bool" }}
-      {{- if $val }}
-- "--{{ $key | replace "_" "-" }}"
+  {{- $argList := dict }}
+  {{- range $k, $v := $args }}
+    {{- $_ := set $argList $k $v }}
+  {{- end }}
+  {{- $keys := keys $argList | sortAlpha }}
+  {{- range $i, $k := $keys }}
+    {{- $v := index $argList $k }}
+    {{- $isLast := eq (add1 $i) (len $keys) }}
+    {{- if eq (kindOf $v) "bool" }}
+      {{- if $v }}
+{{ $k | replace "_" "-" }}{{ if not $isLast }} \{{ end }}
       {{- end }}
     {{- else }}
-- "--{{ $key | replace "_" "-" }}={{ $val }}"
+{{ $k | replace "_" "-" }} {{ $v }}{{ if not $isLast }} \{{ end }}
     {{- end }}
   {{- end }}
 {{- end }}
