@@ -1,5 +1,6 @@
-{{- if .Values.llama_factory.enabled }}
 {{- $ctx := . }}
+
+{{- if and (not .Values.llama_factory.enabled ) .Values.vllm.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -36,10 +37,9 @@ spec:
       {{- end }}
       containers:
       - name: {{ .Chart.Name }}
-        command: ["bash", "-c"]
+        command: ["vllm", "serve"]
         args:
-          - | {{ include "llama_factory.renderBashCommand" .}}
-
+          {{ include "vllm.vllmServeCommand" . | nindent 10 | default .Values.llama_factory.model | trim }}
         {{- with .Values.securityContext }}
         securityContext:
           {{- toYaml . | nindent 12 }}

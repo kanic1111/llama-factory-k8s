@@ -85,30 +85,17 @@ Create the name of the service account to use
   {{- end }}
 {{- end }}
 
-{{- define "llama_factory.renderBashCommand" -}}
-    {{- $base := printf "llamafactory-cli %s %s" .Values.llama_factory.cli_args.mode .Values.llama_factory.templatepath }}
-    {{- $args := list (printf "%s " $base) }}
-    {{- $args = append $args (printf "infer_backend=%s" .Values.llama_factory.cli_args.infer_backend) }}
-    {{- if eq .Values.llama_factory.cli_args.infer_backend "vllm" }}
-        {{- if .Values.llama_factory.cli_args.vllm }}
-            {{- $extra := .Values.llama_factory.cli_args.vllm.extraArgs }}
-            {{- $keys := keys $extra | sortAlpha }}
-            {{- range $i, $k := $keys }}
-                {{- $val := index $extra $k }}
-                {{- $item := printf "%s=%v" $k $val }}
-                {{- $args = append $args $item }}
-            {{- end }}
-        {{- end }}
+{{- define "vllm.vllmServeCommand" }}{{ printf "- \"%s\"" .Values.vllm.model }}
+{{- $args := .Values.llama_factory.cli_args.vllm.extraArgs }}
+{{- if $args }}
+  {{- range $key, $val := $args }}
+    {{- if eq (kindOf $val) "bool" }}
+      {{- if $val }}
+- "--{{ $key | replace "_" "-" }}"
+      {{- end }}
+    {{- else }}
+- "--{{ $key | replace "_" "-" }}={{ $val }}"
     {{- end }}
-
-    {{- $lastIndex := sub (len $args) 1 }}
-    {{- range $i, $line := $args }}
-        {{- if lt $i $lastIndex }}
-            {{ $line }} \
-        {{- else }}
-            {{ $line }}
-        {{- end }}
-    {{- end }}
+  {{- end }}
 {{- end }}
-
-
+{{- end }}

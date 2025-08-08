@@ -5,7 +5,21 @@
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
 
+# add vllm for some model that can't be deploy with llama-factory
+vllm:
+  enabled: true # this gets overwrite if llama_factory are enabled  
+  model: "test"
+  hf_token: ""
+  image: vllm/vllm-openai:gptoss
+  args:
+    vllm:
+      extraArgs:
+        --enforce-eager: true
+        --gpu-memory-utilization: 0.9
+        --max-model-len: 32768
+
 llama_factory:
+  enabled: true
   # vllm max_model_len adjust by yourself
   # bashCommand: 
   #   |
@@ -16,6 +30,7 @@ llama_factory:
   #     vllm_maxlen=32768 
   model: RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic
   hf_cache: true 
+  hf_token: ""
   # env for both llama-factory and hugging face
   # env are all optional but the cache store should be point to the pvc mount path
   env:
@@ -25,7 +40,7 @@ llama_factory:
     api-port: "8000"
     vllm-allow-long-max-model-len: "0"
  
-  #config to Llama-factory
+  #config path to Llama-factory
   templatepath: "/workspace/config/llama4.yaml"
 
   # for CLI arg please check llamafactory github: https://github.com/hiyouga/LLaMA-Factory/tree/main 
@@ -39,7 +54,8 @@ llama_factory:
         vllm_maxlen: 32768
 
   config:
-    name: llama4-config
+    name: llama4-config-2
+    filename: llama4.yaml
     cli_config:
       model_name_or_path: RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic
       template: llama4
@@ -194,7 +210,7 @@ storage:
 volumeMounts: 
 - name: "{{ .Values.llama_factory.config.name }}"
   mountPath: "{{ .Values.llama_factory.templatepath }}"
-  subPath: llama4.yaml
+  subPath: "{{ .Values.llama_factory.config.name }}"
 - name: "{{ .Values.storage.pvc.name }}"
   mountPath: /workspace
 - name: dev-shm
