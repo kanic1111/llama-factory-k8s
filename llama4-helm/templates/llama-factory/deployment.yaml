@@ -1,103 +1,111 @@
 {{- if .Values.llama_factory.enabled }}
 {{- $ctx := . }}
+{{- range .Values.llama_factory.models }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "llama4-helm.fullname" . }}
+  name: {{  include "llama4-helm.fullname" $ctx }}
   labels:
-    {{- include "llama4-helm.labels" . | nindent 4 }}
+    {{- include "llama4-helm.labels" $ctx | nindent 4 | default ( printf "app:" .model_name ) }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
+  {{- if not $ctx.Values.autoscaling.enabled }}
+  replicas: {{ $ctx.Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "llama4-helm.selectorLabels" . | nindent 6 }}
+      {{- include "llama4-helm.labels" $ctx | nindent 6 | default ( printf "app:" .model_name ) }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
+      {{- with $ctx.Values.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "llama4-helm.labels" . | nindent 8 }}
-        {{- with .Values.podLabels }}
+        {{- include "llama4-helm.labels" $ctx | nindent 8 | default ( printf "app:" .model_name ) }}
+        {{- with $ctx.Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {{- with $ctx.Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "llama4-helm.serviceAccountName" . }}
-      {{- with .Values.podSecurityContext }}
+      serviceAccountName: {{ include "llama4-helm.serviceAccountName" $ctx }}
+      {{- with .podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
-      - name: {{ .Chart.Name }}
+      - name: {{ $ctx.Chart.Name }}
         command: ["bash", "-c"]
         args:
-          - | {{ include "llama_factory.renderBashCommand" .}}
+          - | {{ include "llama_factory.renderBashCommand" . | default ( printf "llama-factory api " .templatepath ) }}
 
-        {{- with .Values.securityContext }}
+        {{- with .securityContext }}
         securityContext:
           {{- toYaml . | nindent 12 }}
         {{- end }}
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        image: "{{ .image.repository | default "hiyouga/llamafactory:" }}:{{ .image.tag | default "latest" }}"
+        imagePullPolicy: {{ .image.pullPolicy }}
         ports:
           - name: openai
-            containerPort: {{ .Values.service.port }}
+            containerPort: {{ .service.port }}
             protocol: TCP
-      {{- if .Values.healthcheck.enabled }}
-        {{- with .Values.healthcheck.livenessProbe }}
+      {{- if .healthcheck.enabled }}
+        {{- with .healthcheck.livenessProbe }}
         livenessProbe:
           {{- toYaml . | nindent 12 }}
         {{- end }}
-        {{- with .Values.healthcheck.readinessProbe }}
+        {{- with .healthcheck.readinessProbe }}
         readinessProbe:
           {{- toYaml . | nindent 12 }}
         {{- end }}
       {{- end }}
-      {{- if .Values.llama_factory.env }}
+      {{- if .env }}
         env:
-        {{- range $key, $val := .Values.llama_factory.env }}
+        {{- range $key, $val := .env }}
           - name: {{ $key | upper | replace "-" "_" }}
             value: "{{ $val }}"
         {{- end }}
           - name: API_MODEL_NAME
-            value: {{ .Values.llama_factory.model | quote }}
+            value: {{ .model_name | quote }}
       {{- end }}
-        {{- with .Values.resources }}
+        {{- with .resources }}
         resources:
           {{- toYaml . | nindent 12 }}
         {{- end }}
         volumeMounts:
-        {{- range .Values.volumeMounts }}
-          {{- $volumeYaml := tpl (toYaml .  )  $ctx  }}
-        - {{ $volumeYaml   |  nindent 10 | trim }}
-        {{- end }}
-   {{- if .Values.storage.volumes }}
-      volumes:
-      {{- range .Values.storage.volumes }}
-        {{- $volumeYaml := tpl (toYaml .  )  $ctx  }}
-        {{- if or (not (regexMatch ".*persistentVolumeClaim.*" $volumeYaml)) (and $.Values.storage.pvc.enabled (regexMatch ".*persistentVolumeClaim.*" $volumeYaml)) }}
-      - {{ $volumeYaml   |  nindent 8 | trim }}
-        {{- end }}
-      {{- end }}
+        - name: {{ .config.name }}
+          mountPath: {{ .templatepath }}
+          subPath: {{ .config.name }}
+        - name: {{ $ctx.Values.storage.pvc.name }}
+          mountPath: /workspace
+        - name: dev-shm
+          mountPath: /dev/shm
+   {{- if $ctx.Values.storage.volumes }}
+      volumes: 
+      - name: {{ .config.name }}
+        configMap:
+          name: {{ .config.name }}
+      - name: {{ $ctx.Values.storage.pvc.name }}
+        persistentVolumeClaim:
+          claimName: {{ $ctx.Values.storage.pvc.name }}-pvc
+      - name: dev-shm
+        emptyDir:
+          medium: "Memory"
+          sizeLimit: {{ $ctx.Values.storage.shmSize }}
     {{- end }}
-      {{- with .Values.nodeSelector }}
+      {{- with $ctx.Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with $ctx.Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with $ctx.Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-
+{{- end }}
 {{- end }}

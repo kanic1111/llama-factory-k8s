@@ -1,9 +1,11 @@
+{{- range .Values.llama_factory.models }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Values.llama_factory.config.name }}
+  name: {{ .config.name }}
 data:
-  {{- with .Values.llama_factory.config.cli_config}}
+  {{- with .config.cli_config}}
   llama4.yaml: |
     {{- toYaml . | nindent 4 }}
   {{- end }}
+{{- end }}

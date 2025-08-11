@@ -1,16 +1,21 @@
+{{- if .Values.llama_factory.enabled }}
+{{- $ctx := . }}
+{{- range .Values.llama_factory.models }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "llama4-helm.fullname" . }}
+  name: {{ include "llama4-helm.fullname" $ctx }}
   labels:
-    {{- include "llama4-helm.labels" . | nindent 4 }}
+    {{- include "llama4-helm.labels" $ctx | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .service.type }}
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: {{ .Values.service.port }}
+    - port: {{ .service.port }}
+      targetPort: {{ .service.port }}
       protocol: TCP
-      nodePort: {{ .Values.service.nodeport }}
+      nodePort: {{ .service.nodeport }}
       name: openai
   selector:
-    {{- include "llama4-helm.selectorLabels" . | nindent 4 }}
+    {{- include "llama4-helm.selectorLabels" $ctx | nindent 4 }}
+{{- end }}
+{{- end }}

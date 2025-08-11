@@ -11,5 +11,5 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args: ['{{ include "llama4-helm.fullname" . }}:{{ .Values.service.port }}']
+      args: ['{{ include "llama4-helm.fullname" . }}:8000']
   restartPolicy: Never

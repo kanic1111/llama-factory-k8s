@@ -1,0 +1,15 @@
+{{- range .Values.apps }}
+{{- if .config }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .name }}-config
+data:
+{{- with .config}}
+  {{ .filename }}: |
+    {{- $cfg := omit . "filename" }}
+    {{- toYaml $cfg | nindent 4 }}
+{{- end }}
+---
+{{- end }}
+{{- end }}

@@ -61,30 +61,54 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 
-{{- define "llama_factory.renderBashCommand" -}}
-    {{- $base := printf "llamafactory-cli %s %s" .cli_args.mode .templatepath }}
-    {{- $args := list (printf "%s " $base) }}
-    {{- $args = append $args (printf "infer_backend=%s" .cli_args.infer_backend) }}
-    {{- if eq .cli_args.infer_backend "vllm" }}
-        {{- if .cli_args.vllm }}
-            {{- $extra := .cli_args.vllm.extraArgs }}
-            {{- $keys := keys $extra | sortAlpha }}
-            {{- range $i, $k := $keys }}
-                {{- $val := index $extra $k }}
-                {{- $item := printf "%s=%v" $k $val }}
-                {{- $args = append $args $item }}
-            {{- end }}
-        {{- end }}
-    {{- end }}
+{{/*
+  Helper that returns the fully‑qualified name for a given app.
+  Usage: {{ include "multi-app-chart.fullname" . $app }}
+*/}}
+{{- define "multi-app-chart.fullname" -}}
+{{- $root := . -}}
+{{- $app  := index . 1 -}}
+{{- printf "%s-%s" $root.Release.Name $app.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
 
-    {{- $lastIndex := sub (len $args) 1 }}
-    {{- range $i, $line := $args }}
-        {{- if lt $i $lastIndex }}
-            {{ $line }} \
-        {{- else }}
-            {{ $line }}
-        {{- end }}
+{{/*
+  Helper that merges app‑specific values with global defaults.
+  Returns a dict with the merged result.
+*/}}
+{{- define "multi-app-chart.mergedValues" -}}
+{{- $root := . -}}
+{{- $app  := index . 1 -}}
+{{-  $merged := deepCopy .Values.global -}}
+{{- /* Override with app‑specific top‑level keys */ -}}
+{{- range $k, $v := $app -}}
+  {{- if not (hasKey (list "name" "service") $k) -}}
+    {{- $_ := set $merged $k $v -}}
+  {{- end -}}
+{{- end -}}
+{{- $_ := set $merged "name" $app.name -}}
+{{- $_ := set $merged "service" $app.service -}}
+{{- printf $merged -}}
+{{- end -}}
+
+{{- define "vllm.vllmServeCommand" -}}
+vllm serve {{ .Values.vllm.model }} \
+{{- $args := .Values.vllm.extraArgs }}
+{{- if $args }}
+  {{- $argList := dict }}
+  {{- range $k, $v := $args }}
+    {{- $_ := set $argList $k $v }}
+  {{- end }}
+  {{- $keys := keys $argList | sortAlpha }}
+  {{- range $i, $k := $keys }}
+    {{- $v := index $argList $k }}
+    {{- $isLast := eq (add1 $i) (len $keys) }}
+    {{- if eq (kindOf $v) "bool" }}
+      {{- if $v }}
+{{ $k | replace "_" "-" }}{{ if not $isLast }} \{{ end }}
+      {{- end }}
+    {{- else }}
+{{ $k | replace "_" "-" }} {{ $v }}{{ if not $isLast }} \{{ end }}
     {{- end }}
+  {{- end }}
 {{- end }}
-
-
+{{- end }}
