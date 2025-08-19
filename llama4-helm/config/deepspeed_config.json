@@ -1,0 +1,19 @@
+{
+  "fp16": {
+    "enabled": true,
+    "loss_scale": 0,
+    "initial_scale_power": 16
+  },
+  "zero_optimization": {
+    "stage": 3,
+    "offload_param": {
+      "device": "cpu",
+      "pin_memory": true
+    }
+  },
+  "inference_engine": {
+    "enabled": true,
+    "kernel_injection": true
+  },
+  "set_empty_params": false
+}

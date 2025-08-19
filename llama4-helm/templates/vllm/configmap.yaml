@@ -1,0 +1,12 @@
+{{- $config := .Files.Get "config/deepspeed_config.json" }}
+{{- range .Values.models }}
+{{- if eq .infer_method  "vllm" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "deepspeed_config" }}
+deepspeed_config.json: |
+  {{ printf $config | nindent 2 | trim }}
+
+{{- end }}
+{{- end }}

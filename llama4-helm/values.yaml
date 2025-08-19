@@ -7,47 +7,25 @@ replicaCount: 1
 
 # add vllm for some model that can't be deploy with llama-factory
 apps:
-  - name: frontend
-    image:
-      repository: nginx
-      tag: "1.25"
-    env:
-      - name: API_URL
-        value: "http://backend:8080"
-    services:
-      - port: 80
-        type: ClusterIP
-    replicaCount: 1
-    config:
-      filename: test.ini
-      port: 8000
-      token: "test"
-
-  - name: backend
-    image:
-      repository: myorg/backend-api
-      tag: "2.3.1"
-    env:
-      - name: DATABASE_URL
-        valueFrom:
-          secretKeyRef:
-            name: backend-db-secret
-            key: url
-    resources:
-      limits:
-        cpu: 500m
-        memory: 256Mi
-    services:
-      - name: backend-port
-        port: 8080
-        targetport: 8080
-        nodeport: 30100
-        type: NodePort
-      - name: agent-port
-        port: 80
-        targetport: 80
-        type: ClusterIP
-
+  # - name: test
+  #   image:
+  #     repository: qdrant/qdrant
+  #     tag: "latest"
+  #   env:
+  #     - name: API_URL
+  #       value: "0.0.0.0:6443"
+  #   services:
+  #     - port: 6333
+  #       name: qdrant-port
+  #       type: ClusterIP
+  #     - port: 6443
+  #       name: qdrant-port-2
+  #       type: ClusterIP
+  #   replicaCount: 1
+  #   storage:
+  #     type: local
+  #     path: "/qdrant/storage/collections"
+  #     local_path: "/home/ubuntu/storage_qdrant"
   - name: worker
     image:
       repository: myorg/worker
@@ -60,109 +38,215 @@ apps:
     # No Service – this pod is headless (e.g. a background worker)
     services: false
 
-vllm:
-  enabled: false # this gets overwrite if llama_factory are enabled  
-  models:
-  - model_name: "RedHatAI/whisper-large-v3-FP8-Dynamic"
-    hf_token: ""
-    image: vllm/vllm-openai:gptoss
-    extraArgs:
-      --enforce-eager: true
-      --gpu-memory-utilization: 0.7
-      --max-model-len: 448  
+qdrant:
+  name: qdrant
+  image:
+    repository: qdrant/qdrant
+    tag: "latest"
+  env:
+    - name: API_URL
+      value: "0.0.0.0:6443"
+  services:
+    - port: 6333
+      name: qdrant-port
+      type: ClusterIP
+    - port: 6443
+      name: qdrant-port-2
+      type: ClusterIP
+  replicaCount: 1
+  storage:
+    type: local
+    path: "/qdrant/storage/collections"
+    local_path: "/home/ubuntu/storage_qdrant"
 
-llama_factory:
-  enabled: true
-  models:
-  - image:
-      repository: kanic1111/llama-factory
-      # This sets the pull policy for images.
-      pullPolicy: IfNotPresent
-      # Overrides the image tag whose default is the chart appVersion.
-      tag: "05-23"
-    # vllm max_model_len adjust by yourself
-    # bashCommand: 
-    #   |
-    #   llamafactory-cli api {{ .Values.llama_factory.templatepath }} 
-    #     infer_backend=vllm \
-    #     vllm_enforce_eager=true \
-    #     vllm_gpu_util=0.9 \
-    #     vllm_maxlen=32768 
-    model_name: RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic
-    securityContext: {}
-    # capabilities:
-    #   drop:
-    #   - ALL
-    # readOnlyRootFilesystem: true
-    # runAsNonRoot: true
-  # runAsUser: 1000
-    hf_cache: true 
-    hf_token: ""
-    # env for both llama-factory and hugging face
-    # env are all optional but the cache store should be point to the pvc mount path
-    env:
-      huggingface-cache: true
-      hf-home: "/workspace/hf/cache"
-      huggingface-hub-cache: "/workspace/hf/hub_cache"
-      api-port: "8000"
-      vllm-allow-long-max-model-len: "0"
-    # This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
-    service:
-      # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+ollama:
+  name: test
+  replicas: 1
+  image:
+    repository: ollama/ollama
+    tag: "latest"
+  env:
+    - name: OLLAMA_HOST
+      value: "0.0.0.0:11434"
+  services:
+    - name: ollama-nodeport
+      port: 11434
+      targetport: 11434
+      nodeport: 30100
       type: NodePort
-      # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
-      port: 8000 #LLM Listened Posrt
-      nodeport: 30003 # nodeport for LLM Service
-        #config path to Llama-factory
-    templatepath: "/workspace/config/llama4.yaml"
+    - name: ollama-port
+      port: 11434
+      targetport: 11434
+      type: ClusterIP
 
-    # for CLI arg please check llamafactory github: https://github.com/hiyouga/LLaMA-Factory/tree/main 
-    cli_args:
-      infer_backend: vllm #llama-factory supports huggingface sglangs vllm
-      mode: api # check llamafactory github to see all avaliable options
-      vllm:
-        extraArgs:
-          vllm_enforce_eager: true
-          vllm_gpu_util: 0.9
-          vllm_maxlen: 32768
+models:
+- infer_method: "llama-factory"
+  image:
+    repository: kanic1111/llama-factory
+    # This sets the pull policy for images.
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "05-23"
+  model_name: RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic
+  securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+# runAsUser: 1000
+  # hf_cache: true 
+  # env for both llama-factory and hugging face
+  # env are all optional but the cache store should be point to the pvc mount path
+  env:
+    huggingface-cache: true
+    hf-home: "/workspace/hf/cache"
+    huggingface-hub-cache: "/workspace/hf/hub_cache"
+    api-port: "8000"
+    vllm-allow-long-max-model-len: "0"
+    hf_token: ""
+  # This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
+  service:
+    # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+    type: NodePort
+    # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
+    port: 8000 #LLM Listened Posrt
+    nodeport: 30003 # nodeport for LLM Service
+      #config path to Llama-factory
 
-    config:
-      name: llama4-config-2
-      filename: llama4.yaml
-      cli_config:
-        model_name_or_path: RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic
-        template: llama4
-        infer_backend: vllm
-        trust_remote_code: true
-    healthcheck:
-      enabled: false
-      livenessProbe:
-        httpGet:
-          path: /v1/models
-          port: 8000
-      readinessProbe:
-        httpGet:
-          path: /v1/models
-          port: 8000
-    resources:
-      limits:
-        nvidia.com/gpu: 1 #llama4 require at leastt 150GB memory  
-      # We usually recommend not to specify default resources and to leave this as a conscious
-      # choice for the user. This also increases chances charts run on environments with little
-      # resources, such as Minikube. If you do want to specify resources, uncomment the following
-      # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-      # limits:
-      #   cpu: 100m
-      #   memory: 128Mi
-      # requests:
-      #  cpu: 100m
-      #   memory: 128Mi
-    # env example:
-    # env:
-    #   huggingface-cache: true
-    #   hf-home: "/workspace/huggingface/cache"
-    #   
-    # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+  # for CLI arg please check llamafactory github: https://github.com/hiyouga/LLaMA-Factory/tree/main 
+  # vllm max_model_len adjust by yourself
+  # cli_args:
+  #   infer_backend: vllm #llama-factory supports huggingface sglangs vllm
+  #   mode: api # check llamafactory github to see all avaliable options
+  #   vllm:
+  #     extraArgs:
+  #       vllm_enforce_eager: true
+  #       vllm_gpu_util: 0.9
+  #       vllm_maxlen: 32768
+  cli_args:
+    infer_backend: vllm #llama-factory supports huggingface sglangs vllm
+    mode: api # check llamafactory github to see all avaliable options
+    vllm:
+      extraArgs:
+        vllm_enforce_eager: true
+        vllm_gpu_util: 0.9
+        vllm_maxlen: 32768
+
+  # for template please check llamafactory github: https://github.com/hiyouga/LLaMA-Factory/tree/main
+  # examples for inference :
+  # config:
+  #   name: llama4-config-2
+  #   filename: llama4.yaml
+  #   template:
+  #     model_name_or_path: meta-llama/Meta-Llama-3-8B-Instruct
+  #     template: llama3
+  #     infer_backend: huggingface  # choices: [huggingface, vllm, sglang]
+  #     trust_remote_code: true
+
+  templatepath: "/workspace/config/llama4.yaml"
+  config:
+    name: llama4-config-2
+    filename: llama4.yaml
+    template:
+      model_name_or_path: RedHatAI/Llama-4-Scout-17B-16E-Instruct-FP8-dynamic
+      template: llama4
+      infer_backend: vllm
+      trust_remote_code: true
+  healthcheck:
+    enabled: false
+    livenessProbe:
+      httpGet:
+        path: /v1/models
+        port: 8000
+    readinessProbe:
+      httpGet:
+        path: /v1/models
+        port: 8000
+  resources:
+    limits:
+      nvidia.com/gpu: 1 #llama4 require at leastt 150GB memory  
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #  cpu: 100m
+    #   memory: 128Mi
+  # env example:
+  # env:
+  #   huggingface-cache: true
+  #   hf-home: "/workspace/huggingface/cache"
+  #   
+  # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+
+  #pvc example
+  pvc:
+    enabled: true
+    use_existed: false
+    name: workspace
+    storageClassName: "nfs-csi"
+    accessMode: ReadWriteMany
+    size: 1Ti # atleast 500GB needed to download model
+
+- infer_method: vllm
+  name: "vllm-container"
+  model_name: "RedHatAI/whisper-large-v3-FP8-Dynamic"
+  replicaCount: 1
+  hf_token: ""
+  image:
+    repository: vllm/vllm-openai
+    # This sets the pull policy for images.
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "gptoss"
+  extraArgs:
+    --enforce-eager: true
+    --gpu-memory-utilization: 0.7
+    --max-model-len: 448  
+    --async-scheduling: true
+  pvc:
+    enabled: true
+    use_existed: true
+    name: workspace
+    storageClassName: "nfs-csi"
+    accessMode: ReadWriteMany
+    size: 1Ti 
+  env:
+    huggingface-cache: true
+    hf-home: "/workspace/hf/cache"
+    huggingface-hub-cache: "/workspace/hf/hub_cache"
+    api-port: "8000"
+    vllm-allow-long-max-model-len: "0"
+    hf_token: ""
+  config:
+    name: deepspeed_config
+    path: config/deepspeed_config.json
+    
+    
+  # This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
+  service:
+    # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+    type: NodePort
+    # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
+    port: 8000 #LLM Listened Posrt
+    nodeport: 30003
+  healthcheck:
+    enabled: false
+    livenessProbe:
+      httpGet:
+        path: /v1/models
+        port: 8000
+    readinessProbe:
+      httpGet:
+        path: /v1/models
+        port: 8000
+  resources:
+    limits:
+      nvidia.com/gpu: 1 
 
 # This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []

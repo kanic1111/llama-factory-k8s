@@ -16,9 +16,34 @@ spec:
       containers:
         - name: {{ .name }}
           image: "{{ .image.repository }}:{{ .image.tag | default "latest" }}"
+          {{- if .command }}
+          command: {{ .command }}
+          {{- end }}
           ports:
             - containerPort: {{ .port }}
           env:
             {{- toYaml .env | nindent 12 }}
----
-{{- end }}
+        {{- if .storage }}
+          {{- if eq .storage.type "local" }}
+          volumeMounts:
+          - name: {{ .name }}
+            mountPath: {{ .storage.path }}
+      volumes:
+      - name: {{ .name }}
+        hostPath:
+          path: {{ .storage.local_path }}
+          type: DirectoryOrCreate
+          {{- else if eq .storage.type "pvc" -}}
+          - name: {{ .Values.storage.pvc.name }}
+          mountPath: /workspace
+      volumes:
+      - name: {{ .Values.storage.pvc.name }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.storage.pvc.name }}-pvc
+          {{- end -}}
+        {{- end -}}
+
+        
+
+{{- printf "\n---\n" }}
+{{- end -}}

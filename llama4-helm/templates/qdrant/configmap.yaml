@@ -1,0 +1,13 @@
+{{- if .Values.qdrant.config }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.qdrant.name }}-config
+data:
+{{- with .Values.qdrant.config}}
+  {{ .Values.qdrant.filename }}: |
+    {{- $cfg := omit . "filename" }}
+    {{- toYaml $cfg | nindent 4 }}
+{{- end }}
+---
+{{- end }}

@@ -86,8 +86,8 @@ Create the name of the service account to use
 {{- end }}
 
 {{- define "vllm.vllmServeCommand" -}}
-vllm serve {{ .Values.vllm.model }} \
-{{- $args := .Values.vllm.extraArgs }}
+vllm serve {{ .model_name }} \
+{{- $args := .extraArgs }}
 {{- if $args }}
   {{- $argList := dict }}
   {{- range $k, $v := $args }}

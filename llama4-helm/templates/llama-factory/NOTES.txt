@@ -1,6 +1,6 @@
 1. Get the application URL by running these commands:
 {{- $ctx := . }}
-{{- range .Values.llama_factory.models }}
+{{- range .Values.models }}
 {{- if $ctx.Values.ingress.enabled }}
 {{- range $host := $ctx.Values.ingress.hosts }}
   {{- range .paths }}

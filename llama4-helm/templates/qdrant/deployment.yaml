@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.qdrant.name }}
+spec:
+  replicas: {{ .Values.qdrant.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.qdrant.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.qdrant.name }}
+    spec:
+      containers:
+        - name: {{ .Values.qdrant.name }}
+          image: "{{ .Values.qdrant.image.repository }}:{{ .Values.qdrant.image.tag | default "latest" }}"
+          {{- if .Values.qdrant.command }}
+          command: {{ .Values.qdrant.command }}
+          {{- end }}
+          ports:
+            - containerPort: {{ .Values.qdrant.port }}
+          env:
+            {{- toYaml .Values.qdrant.env | nindent 12 }}
+        {{- if .Values.qdrant.storage }}
+          {{- if eq .Values.qdrant.storage.type "local" }}
+          volumeMounts:
+          - name: {{ .Values.qdrant.name }}
+            mountPath: {{ .Values.qdrant.storage.path }}
+      volumes:
+      - name: {{ .Values.qdrant.name }}
+        hostPath:
+          path: {{ .Values.qdrant.storage.local_path }}
+          type: DirectoryOrCreate
+          {{- else if eq .Values.qdrant.storage.type "pvc" -}}
+          - name: {{ .Values.storage.pvc.name }}
+          mountPath: /workspace
+      volumes:
+      - name: {{ .Values.storage.pvc.name }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.storage.pvc.name }}-pvc
+          {{- end -}}
+        {{- end -}}

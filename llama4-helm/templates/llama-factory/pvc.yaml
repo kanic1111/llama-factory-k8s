@@ -1,13 +1,16 @@
-{{- if and .Values.storage.pvc.enabled (not .Values.storage.pvc.use_existed ) -}}
+{{- $ctx := . }}
+{{- range .Values.models }}
+{{- if and .pvc.enabled (not .pvc.use_existed ) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .Values.storage.pvc.name }}-pvc
+  name: {{ .pvc.name }}-pvc
 spec:
   accessModes:
-    - {{ .Values.storage.pvc.accessMode }}
+    - {{ .pvc.accessMode }}
   resources:
     requests:
-      storage: {{ .Values.storage.pvc.size }}
-  storageClassName: {{ .Values.storage.pvc.storageClassName | quote }}
+      storage: {{ .pvc.size }}
+  storageClassName: {{ .storageClassName | quote }}
+{{- end }}
 {{- end }}

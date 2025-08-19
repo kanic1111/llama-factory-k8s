@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.ollama.name | default "ollama-pod" }}
+spec:
+  replicas: {{ .Values.ollama.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.ollama.name | default "ollama-pod" }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.ollama.name | default "ollama-pod" }}
+    spec:
+      containers:
+        - name: {{ .Values.ollama.name | default "ollama-pod" }}
+          image: "{{ .Values.ollama.image.repository | default "ollama/ollama" }}:{{ .Values.ollama.image.tag | default "latest" }}"
+          {{- if .Values.ollama.command }}
+          command: {{ .Values.ollama.command }}
+          {{- end }}
+          ports:
+            - containerPort: 11434
+          env:
+            {{- toYaml .Values.ollama.env | nindent 12 }}
+        {{- if .Values.ollama.storage }}
+          {{- if eq .Values.ollama.storage.type "local" }}
+          volumeMounts:
+          - name: {{ .Values.ollama.name }}
+            mountPath: {{ .Values.ollama.storage.path }}
+      volumes:
+      - name: {{ .Values.ollama.name }}
+        hostPath:
+          path: {{ .Values.storage.local_path }}
+          type: DirectoryOrCreate
+          {{- else if eq .Values.ollama.storage.type "pvc" -}}
+          - name: {{ .Values.storage.pvc.name }}
+          mountPath: /workspace
+      volumes:
+      - name: {{ .Values.storage.pvc.name }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.storage.pvc.name }}-pvc
+          {{- end -}}
+        {{- end -}}
+
+        

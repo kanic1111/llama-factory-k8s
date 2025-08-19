@@ -1,11 +1,13 @@
-{{- range .Values.llama_factory.models }}
+{{- range .Values.models }}
+{{- if eq .infer_method  "llama-factory" }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ .config.name }}
 data:
-  {{- with .config.cli_config}}
+  {{- with .config.template}}
   llama4.yaml: |
     {{- toYaml . | nindent 4 }}
   {{- end }}
+{{- end }}
 {{- end }}

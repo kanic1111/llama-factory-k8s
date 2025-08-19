@@ -1,0 +1,25 @@
+{{- if .Values.ollama.services -}}
+{{- range .Values.ollama.services }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ default (printf "%s-port-%s" .name (randAlphaNum 3)) .name }}
+spec:
+  selector:
+    app: {{ .name }}
+  ports:
+    - port: {{ .port }}
+      targetPort: {{ .targetport | default .port }}
+      protocol: {{ .protocol | default "tcp" }}
+{{- if .nodeport }}
+      nodePort: {{ .nodeport }}
+      type: {{ .type | default "NodePort"}}
+{{- else if .loadbalancerIP }}
+      type: {{ .type | default "LoadBalancer"}}
+      loadBalancerIP: {{ .loadbalancerIP }} 
+{{- else }}
+      type: {{ .type | default "ClusterIP"}}
+{{- end }}  
+---
+{{- end }}
+{{- end }}

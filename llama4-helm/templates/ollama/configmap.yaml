@@ -1,0 +1,13 @@
+{{- if .Values.ollama.config }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.ollama.name }}-config
+data:
+{{- with .Values.ollama.config}}
+  {{ .Values.ollama.config.filename }}: |
+    {{- $cfg := omit . "filename" }}
+    {{- toYaml $cfg | nindent 4 }}
+{{- end }}
+---
+{{- end }}
