@@ -1,16 +1,19 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "llama4-helm.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- define "vllm.name" -}}
+  {{- range .Values.models }}
+    {{- if eq .infer_method  "vllm" }}
+      {{- default .name  | trunc 63 | trimSuffix "-" }}
+    {{- end }}
+  {{- end }}
 {{- end }}
-
 {{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "llama4-helm.fullname" -}}
+{{- define "vllm.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +29,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "llama4-helm.chart" -}}
+{{- define "vllm.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "llama4-helm.labels" -}}
-helm.sh/chart: {{ include "llama4-helm.chart" . }}
-{{ include "llama4-helm.selectorLabels" . }}
+{{- define "vllm.labels" -}}
+helm.sh/chart: {{ include "vllm.chart" . }}
+{{ include "vllm.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,45 +48,22 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "llama4-helm.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "llama4-helm.name" . }}
+{{- define "vllm.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "vllm.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "llama4-helm.serviceAccountName" -}}
+{{- define "vllm.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "llama4-helm.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "vllm.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
 
-# get llama-factory vllm arg
-{{- define "llamafactory.getArgs" -}}
-  {{- $args := list }}
-  {{- range $i, $arg := .extraArgs }}
-    {{- $tokens := split " " $arg }}
-    {{- range $t := $tokens }}
-      {{- if hasPrefix $t "llamafactory-cli" }}
-        {{- $args = append $args $t }}
-      {{- else if hasPrefix $t "/" }}
-        {{- $args = append $args $t }}
-      {{- else if hasPrefix $t "-" }}
-        {{- $args = append $args $t }}
-      {{- else if contains "=" $t }}
-        {{- $args = append $args (printf "--%s" $t) }}
-      {{- else }}
-        {{- $args = append $args $t }}
-      {{- end }}
-    {{- end }}
-  {{- end }}
-  {{- range $a := $args }}
-  - {{ $a | quote }}
-  {{- end }}
-{{- end }}
 
 {{- define "vllm.vllmServeCommand" -}}
 vllm serve {{ .model_name }} \

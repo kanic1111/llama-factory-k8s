@@ -1,0 +1,22 @@
+{{- $ctx := . }}
+{{- range .Values.models }}
+{{- if eq .infer_method  "vllm" }}
+{{- $name := include "llama4-helm.fullname" $ctx }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .service.name  | default $name }}
+  labels:
+    {{- include "llama4-helm.labels" $ctx | nindent 4 }}
+spec:
+  type: {{ .service.type }}
+  ports:
+    - port: {{ .service.port }}
+      targetPort: {{ .service.port }}
+      protocol: TCP
+      nodePort: {{ .service.nodeport }}
+      name: {{ .service.name }}
+  selector:
+    {{- include "llama4-helm.selectorLabels" $ctx | nindent 4 }}
+{{- end }}
+{{- end }}
