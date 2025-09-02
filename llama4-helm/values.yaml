@@ -26,17 +26,54 @@ apps:
   #     type: local
   #     path: "/qdrant/storage/collections"
   #     local_path: "/home/ubuntu/storage_qdrant"
-  - name: worker
+  - name: Agent
     image:
-      repository: myorg/worker
-      tag: "latest"
-    command: ["python", "worker.py"]
-    resources:
-      limits:
-        cpu: 300m
-        memory: 128Mi
+      repository: kanic1111/agent-llm-api
+      tag: "v1"
+    command: ["uvicorn", "llm_api:app", "--host", "0.0.0.0", "--port", "7001"]
+    # resources:
+    #   limits:
+    #     cpu: 800m
+    #     memory: 128Mi
     # No Service – this pod is headless (e.g. a background worker)
-    services: false
+    services:
+    - port: 7001
+      name: qdrant-port
+      type: ClusterIP
+    storage: 
+      type: local
+      size: 20Gi
+      accessMode: ReadWriteMany
+      storageClass: nfs-csi
+    agent_config:
+      # agent config
+      # llm 基本 url、model_name
+      # "http://140.110.160.97:30002/v1"
+      # "ollama"
+      # "llama4-scout"
+      openai_base_url: "*.example.com"
+      api_key: "0.0.0.0:6443"
+      llm_model_name: "llama4-scout"
+      # 預設 prompt 目前預設是 basic, 共有 basic , structured, article_qa, k8s_instruction 三總
+      rompt_style: "k8s_instruction"
+      # reranker 一次輸出數量
+      reranker_top: 5
+      # Qdrant name 機敏雲、可信賴雲
+      SensiMesh_Qdrant_vector_collection_name: "SensiMesh_20250519_512_10_bge-m3"
+      trusted_cloud_Qdrant_vector_collection_name: "trusted-cloud_20250701_512_10_bge-m3"
+
+      # embed_model name 
+      embed_model_name: "bge-m3"
+
+      # 預設溫度參數
+      temperature: 0.0
+
+      # image IP 設定，用來處理圖片抓取用的
+      server:
+        host_ip: "140.110.160.24"
+        port: 8005
+        image_base_url: "http://140.110.160.10:8005/images"
+      
 
 qdrant:
   name: qdrant
@@ -231,6 +268,7 @@ models:
   service:
     # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
     type: NodePort
+    name: vllm-port # leave it empty will have random ganerated name 
     # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
     port: 8000 #LLM Listened Posrt
     nodeport: 30003

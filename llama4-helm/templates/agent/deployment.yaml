@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .name }}
+  name: {{ required "apps require a unique name to create" .name }}
 spec:
   replicas: {{ .replicas }}
   selector:
@@ -19,6 +19,9 @@ spec:
           {{- if .command }}
           command: {{ .command }}
           {{- end }}
+          {{- if .extraArgs }}
+          args: {{ .extraArgs }}
+          {{- end }}
           ports:
             - containerPort: {{ .port }}
           env:
@@ -27,19 +30,19 @@ spec:
           {{- if eq .storage.type "local" }}
           volumeMounts:
           - name: {{ .name }}
-            mountPath: {{ .storage.path }}
+            mountPath: {{ .storage.path | default "/workspace"}}
       volumes:
       - name: {{ .name }}
         hostPath:
-          path: {{ .storage.local_path }}
+          path: {{ .storage.local_path | default "/home/ubuntu/agent-workspace" }}
           type: DirectoryOrCreate
           {{- else if eq .storage.type "pvc" -}}
-          - name: {{ .Values.storage.pvc.name }}
+          - name: {{ .storage.name | default "agent-volume" }}
           mountPath: /workspace
       volumes:
-      - name: {{ .Values.storage.pvc.name }}
+      - name: {{ .storage.name | default "agent-volume"}}
         persistentVolumeClaim:
-          claimName: {{ .Values.storage.pvc.name }}-pvc
+          claimName: {{ .storage.name | default "agent" }}-pvc
           {{- end -}}
         {{- end -}}
 

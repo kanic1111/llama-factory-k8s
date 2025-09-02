@@ -10,7 +10,7 @@ spec:
   selector:
     app: {{ $name }}
   ports:
-    - port: {{ .port }}
+    - port: {{ required "you need to put port number in apps.service.port" .port }}
       targetPort: {{ .targetport | default .port }}
       protocol: {{ .protocol | default "tcp" }}
 {{- if .nodeport }}
